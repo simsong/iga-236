@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>GPG Decryptor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+  <h1>GPG Decryptor</h1>
+
+  <form class="pure-form pure-form-stacked" id="decryptForm">
+    <fieldset>
+      <label for="passphrase">GPG Passphrase</label>
+      <input id="passphrase" type="password" class="pure-input-1" placeholder="Enter your GPG passphrase"/>
+
+      <label for="encryptedMessage">GPG Encrypted Message</label>
+      <textarea id="encryptedMessage" rows="10" class="pure-input-1" placeholder="-----BEGIN PGP MESSAGE-----&#10;...&#10;-----END PGP MESSAGE-----"></textarea>
+
+      <button type="submit" id="decryptBtn" class="pure-button pure-button-primary">Decrypt</button>
+
+      <label for="decryptedMessage">Decrypted Message</label>
+      <textarea id="decryptedMessage" rows="10" class="pure-input-1" readonly placeholder="Decrypted message will appear here..."></textarea>
+
+    </fieldset>
+  </form>
+</div>
+
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
