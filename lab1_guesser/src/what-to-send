@@ -1,0 +1,2 @@
+POST /api/v1/cracks/submit
+{ "challenge_id": "<the id bundled with that student’s challenge>", "candidate": "<their decrypted phrase>", "client": { "ua": "...", "tz": "Asia/Jerusalem" } }

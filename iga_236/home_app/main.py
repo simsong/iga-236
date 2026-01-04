@@ -10,6 +10,8 @@ import os
 import json
 import logging
 import functools
+import mimetypes
+from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -30,7 +32,7 @@ if isdir(join(NESTED, "e11")):
 # path fixing done
 
 TEMPLATE_DIR = join(MY_DIR,"templates")
-STATIC_DIR = join(MY_DIR,"static")
+STATIC_DIR = Path(__file__).parent / "static"
 LOGGER = logging.getLogger(__name__)
 if not LOGGER.handlers:
     logging.basicConfig(level=logging.INFO,
@@ -160,23 +162,32 @@ def error_404(page):
     template = env().get_template("404.html")
     return resp_text(HTTP_NOT_FOUND, template.render(page=page))
 
-def static_file(fname):
-    """Serve a static file"""
-    if ("/" in fname) or (".." in fname) or ("\\" in fname):
-        # path transversal attack?
-        return error_404(fname)
-    headers = {}
-    try:
-        if fname.endswith(".png"):
-            with open(join(STATIC_DIR, fname), "rb") as f:
-                return resp_png(HTTP_OK, f.read())
 
-        with open(join(STATIC_DIR, fname), "r", encoding="utf-8") as f:
-            if fname.endswith(".css"):
-                headers[CONTENT_TYPE_HEADER] = CSS_CONTENT_TYPE
-            return resp_text(HTTP_OK, f.read(), headers=headers)
-    except FileNotFoundError:
-        return error_404(fname)
+def static_file(file_path_str):
+    """Serve a static file"""
+    requested_path = (STATIC_DIR / file_path_str).resolve()
+    if not requested_path.is_relative_to(STATIC_DIR) or not requested_path.is_file():
+        return error_404(file_path_str)
+
+    mime_type, _ = mimetypes.guess_type(requested_path)
+    mime_type = mime_type or "application/octet-stream"
+
+    # Check if it's a binary file (images, fonts, etc.)
+    is_binary = not mime_type.startswith(("text/", "application/json", "application/javascript"))
+
+    with open(join(STATIC_DIR, file_path_str), "rb" if is_binary else "r") as f:
+        content = f.read()
+
+    # pylint: disable=line-too-long
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": mime_type,
+            "Cache-Control": "public, max-age=31536000, immutable" if "assets/" in file_path_str else "no-cache"
+        },
+        "isBase64Encoded": is_binary,
+        "body": base64.b64encode(content).decode("utf-8") if is_binary else content
+    }
 
 def lambda_handler(event, _context):
     """Handle the lambda"""
