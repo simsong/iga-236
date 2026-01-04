@@ -1,6 +1,55 @@
 import * as openpgp from "openpgp";
 import { generatePassword, formatTime } from "./utils";
 
+// Configure OpenPGP.js to ignore MDC (Modification Detection Code) errors
+// This is necessary when trying multiple passwords on the same message,
+// as OpenPGP.js may flag repeated decrypt attempts as modifications
+// Reference: https://stackoverflow.com/questions/64251877/openpgp-js-getting-an-error-error-decrypting-message-session-key-decryption
+try {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (openpgp.config as any).ignore_mdc_error = true;
+} catch {
+  // Config might not be available in this version
+}
+
+// Suppress OpenPGP.js debug/error messages for "Modification detected"
+// These are expected when trying multiple passwords on the same message
+// OpenPGP.js logs these through various console methods
+const shouldSuppress = (args: unknown[]): boolean => {
+  const message = args.map(arg => String(arg)).join(" ");
+  return message.includes("Modification detected") || 
+         message.includes("[OpenPGP.js debug]");
+};
+
+const originalConsoleDebug = console.debug;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
+
+console.debug = (...args: unknown[]) => {
+  if (!shouldSuppress(args)) {
+    originalConsoleDebug.apply(console, args);
+  }
+};
+
+console.error = (...args: unknown[]) => {
+  if (!shouldSuppress(args)) {
+    originalConsoleError.apply(console, args);
+  }
+};
+
+console.warn = (...args: unknown[]) => {
+  if (!shouldSuppress(args)) {
+    originalConsoleWarn.apply(console, args);
+  }
+};
+
+console.log = (...args: unknown[]) => {
+  if (!shouldSuppress(args)) {
+    originalConsoleLog.apply(console, args);
+  }
+};
+
 // UI Elements
 const chkLowercase = document.getElementById("chkLowercase") as HTMLInputElement;
 const chkUppercase = document.getElementById("chkUppercase") as HTMLInputElement;
@@ -34,6 +83,7 @@ let lastUpdateTime = 0;
 let guessesSinceLastUpdate = 0;
 let animationFrameId: number | null = null;
 let abortDecrypt = false; // Flag to ignore in-flight decrypts when stopped
+let cachedEncryptedText = ""; // Cache encrypted text to avoid modification detection
 
 // Character sets
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
@@ -123,14 +173,21 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
     return false;
   }
   
+  // Get encrypted text and cache it to avoid modification detection issues
+  const encryptedText = encryptedInput.value.trim();
+  if (!encryptedText) return false;
+  
+  // Update cache if text changed (for manual edits)
+  if (ignoreAbort || encryptedText !== cachedEncryptedText) {
+    cachedEncryptedText = encryptedText;
+  }
+  
   // Always read the message fresh for each decrypt attempt
   // OpenPGP.js message objects can't be reused across multiple decrypt calls
   let message: Awaited<ReturnType<typeof openpgp.readMessage>>;
   try {
-    const encryptedText = encryptedInput.value.trim();
-    if (!encryptedText) return false;
     message = await openpgp.readMessage({
-      armoredMessage: encryptedText
+      armoredMessage: cachedEncryptedText
     });
   } catch {
     return false;
@@ -285,6 +342,8 @@ async function startGuessing() {
   // Clear error message if validation passes
   errorMessage.textContent = "";
   
+  // Cache encrypted text at start to ensure consistency
+  cachedEncryptedText = encryptedInput.value.trim();
   abortDecrypt = false; // Reset abort flag
   
   if (!isRunning) {
