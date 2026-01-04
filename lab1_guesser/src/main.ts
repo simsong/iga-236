@@ -235,7 +235,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
         const packetsArray = Array.from(msgAny.packets as any);
         console.log("Packets array length:", packetsArray.length);
         packetsArray.forEach((pkt: unknown, i: number) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
           const p = pkt as any;
           console.log(`Packet ${i}:`, {
             tag: p.tag,
@@ -339,13 +339,13 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
       11: "SHA224"
     };
     
-    // S2K algorithm mapping (RFC 4880)
-    const s2kMap: Record<number, string> = {
-      0: "Simple S2K",
-      1: "Salted S2K",
-      2: "Reserved",
-      3: "Iterated and Salted S2K"
-    };
+    // S2K algorithm mapping (RFC 4880) - not used, S2K type is a string in OpenPGP.js
+    // const s2kMap: Record<number, string> = {
+    //   0: "Simple S2K",
+    //   1: "Salted S2K",
+    //   2: "Reserved",
+    //   3: "Iterated and Salted S2K"
+    // };
     
     // Look for symmetric key encrypted data packet
     // Based on actual structure: first packet has sessionKeyAlgorithm and s2k
@@ -744,7 +744,7 @@ btnReset.addEventListener("click", resetGuessing);
 btnDecrypt.addEventListener("click", manualDecrypt);
 
 // Fix Mac em-dash conversion: replace "—" (em dash) with "--" (double hyphen)
-encryptedInput.addEventListener("paste", (e) => {
+encryptedInput.addEventListener("paste", (_e) => {
   // Use setTimeout to process after paste completes
   setTimeout(() => {
     const text = encryptedInput.value;
