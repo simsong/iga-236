@@ -1,0 +1,7 @@
+# Exclude frontend source and junk from the Lambda zip
+**/node_modules/
+**/.vite/
+**/*.map
+**/tests/
+**/.pytest_cache/
+**/__pycache__/

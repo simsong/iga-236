@@ -1,0 +1,51 @@
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import PyPDF2
+from PyPDF2.generic import StreamObject
+
+def create_initial_pdf(filename="initial.pdf"):
+    """Creates a basic PDF with a visible text message."""
+    c = canvas.Canvas(filename, pagesize=letter)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(100, 700, "THIS PDF DOES NOT CONTAIN A VIRUS")
+    c.drawString(100, 680, "This file is for testing purposes only.")
+    c.save()
+
+def inject_eicar_into_pdf(input_file="initial.pdf", output_file="eicar_test_file.pdf"):
+    """
+    Injects the raw EICAR string into the PDF's internal structure.
+    """
+    # Define the EICAR string as raw bytes
+    eicar_string = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+
+    # Create the initial PDF
+    create_initial_pdf(input_file)
+
+    # Open the initial PDF in binary mode
+    with open(input_file, 'rb') as in_f:
+        pdf_reader = PyPDF2.PdfReader(in_f)
+        pdf_writer = PyPDF2.PdfWriter()
+
+        # Add all pages from the reader to the writer
+        for page in pdf_reader.pages:
+            pdf_writer.add_page(page)
+
+        # Create a new, raw stream object to hold the EICAR string
+        eicar_stream = StreamObject()
+        
+        # CORRECTED: Use .set_data() instead of .setData()
+        eicar_stream.set_data(eicar_string)
+        
+        # Add the raw stream to the PDF's objects list.
+        pdf_writer._add_object(eicar_stream)
+
+        # Write the modified PDF to a new file
+        with open(output_file, 'wb') as out_f:
+            pdf_writer.write(out_f)
+
+    print(f"Successfully created '{output_file}'.")
+    print("This file should be detected by antivirus software.")
+
+# Run the function
+if __name__ == "__main__":
+    inject_eicar_into_pdf()

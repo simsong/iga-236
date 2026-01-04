@@ -8,43 +8,43 @@ const decryptBtn = document.getElementById("decryptBtn") as HTMLButtonElement;
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  
+
   const passphrase = passphraseInput.value.trim();
   const encryptedText = encryptedInput.value.trim();
-  
+
   if (!passphrase || !encryptedText) {
     decryptedOutput.value = "Please enter both passphrase and encrypted message.";
     return;
   }
-  
+
   // Disable button during decryption
   decryptBtn.disabled = true;
   decryptBtn.textContent = "Decrypting...";
   decryptedOutput.value = "";
-  
+
   try {
     // Read the encrypted message
     const message = await openpgp.readMessage({
       armoredMessage: encryptedText
     });
-    
+
     // Attempt to decrypt
     const { data: decrypted } = await openpgp.decrypt({
       message,
       passwords: [passphrase],
       format: "utf8"
     });
-    
+
     // Success - show decrypted message
     decryptedOutput.value = decrypted as string;
-    
+
   } catch (error) {
     // Decryption failed
-    decryptedOutput.value = "cannot decrypt";
+    decryptedOutput.value = "cannot decrypt: "+error;
+    console.log("error:",error);
   } finally {
     // Re-enable button
     decryptBtn.disabled = false;
     decryptBtn.textContent = "Decrypt";
   }
 });
-

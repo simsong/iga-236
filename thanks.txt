@@ -1,0 +1,4 @@
+Thanks Chris. It was really imnportant to get this up.
+Now the students can run GPG without having to install it. 
+At least to decrypt with symmetric encryption.
+Now to add password cracking.

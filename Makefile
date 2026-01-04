@@ -53,7 +53,7 @@ check: install
 	poetry run pytest $(CODE_DIR) --log-cli-level=DEBUG
 
 lint: install
-	poetry run pylint iga_236 --ignore=vendor
+	poetry run pylint iga_236
 	poetry run pyright iga_236
 
 # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli-sync.html
