@@ -87,6 +87,40 @@ input[readonly] {
   min-height: 1.5rem;
 }
 
+/* S2K form styling */
+.s2k-form {
+  margin: 1rem 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: #f9f9f9;
+}
+
+.s2k-form legend {
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 0 0.5rem;
+}
+
+.s2k-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .s2k-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.s2k-form input[readonly] {
+  background-color: #f5f5f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+}
+
 .title { margin: 0.2rem 0; }
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
 .bar { width: 100%; height: 8px; }
