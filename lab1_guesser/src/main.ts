@@ -304,6 +304,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tempPackets: unknown[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const pkt of msgAny.packets as any) {
           tempPackets.push(pkt);
         }
