@@ -15,12 +15,33 @@ describe("generatePassword", () => {
     expect(password).toBe("aaa");
   });
 
-  it("should generate sequential passwords correctly", () => {
+  it("should generate sequential passwords correctly in lexicographic order", () => {
     const alphabet = "ab";
     expect(generatePassword(0, alphabet, 2)).toBe("aa");
-    expect(generatePassword(1, alphabet, 2)).toBe("ba");
-    expect(generatePassword(2, alphabet, 2)).toBe("ab");
+    expect(generatePassword(1, alphabet, 2)).toBe("ab");
+    expect(generatePassword(2, alphabet, 2)).toBe("ba");
     expect(generatePassword(3, alphabet, 2)).toBe("bb");
+  });
+
+  it("should generate digits in correct order: 00, 01, 02, ..., 09, 10, 11", () => {
+    const alphabet = "0123456789";
+    expect(generatePassword(0, alphabet, 2)).toBe("00");
+    expect(generatePassword(1, alphabet, 2)).toBe("01");
+    expect(generatePassword(2, alphabet, 2)).toBe("02");
+    expect(generatePassword(9, alphabet, 2)).toBe("09");
+    expect(generatePassword(10, alphabet, 2)).toBe("10");
+    expect(generatePassword(11, alphabet, 2)).toBe("11");
+    expect(generatePassword(99, alphabet, 2)).toBe("99");
+  });
+
+  it("should generate lowercase letters in correct order: aa, ab, ac, ..., az, ba", () => {
+    const alphabet = "abcdefghijklmnopqrstuvwxyz";
+    expect(generatePassword(0, alphabet, 2)).toBe("aa");
+    expect(generatePassword(1, alphabet, 2)).toBe("ab");
+    expect(generatePassword(2, alphabet, 2)).toBe("ac");
+    expect(generatePassword(25, alphabet, 2)).toBe("az");
+    expect(generatePassword(26, alphabet, 2)).toBe("ba");
+    expect(generatePassword(27, alphabet, 2)).toBe("bb");
   });
 
   it("should handle single character alphabet", () => {
@@ -29,12 +50,6 @@ describe("generatePassword", () => {
     expect(generatePassword(1, alphabet, 3)).toBe("aaa"); // Wraps around
   });
 
-  it("should handle longer alphabets", () => {
-    const alphabet = "0123456789";
-    expect(generatePassword(0, alphabet, 2)).toBe("00");
-    expect(generatePassword(10, alphabet, 2)).toBe("10");
-    expect(generatePassword(99, alphabet, 2)).toBe("99");
-  });
 
   it("should handle different password lengths", () => {
     const alphabet = "01";

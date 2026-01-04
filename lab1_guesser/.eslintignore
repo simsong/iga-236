@@ -1,0 +1,7 @@
+lab1_guesser/.eslintignorenode_modules/
+build/
+coverage/
+dist/
+*.min.js
+*.bundle.js
+

@@ -4,6 +4,7 @@
 
 /**
  * Generate password number n from alphabet using base-N arithmetic
+ * Generates passwords in lexicographic order: 'aa', 'ab', 'ac', ..., 'az', 'ba', ...
  * @param n - The password number (0-indexed)
  * @param alphabet - The character set to use
  * @param len - The length of the password
@@ -14,15 +15,18 @@ export function generatePassword(n: number, alphabet: string, len: number): stri
   if (base === 0) return "";
   if (len === 0) return "";
   
-  let password = "";
+  // Build password from right to left (least significant first), then reverse
+  // This gives us lexicographic order: 'aa', 'ab', 'ac', ..., 'az', 'ba', ...
+  const chars: string[] = [];
   let remaining = n;
   
   for (let i = 0; i < len; i++) {
-    password = alphabet[remaining % base] + password;
+    chars.push(alphabet[remaining % base]);
     remaining = Math.floor(remaining / base);
   }
   
-  return password;
+  // Reverse to get left-to-right order (most significant first)
+  return chars.reverse().join("");
 }
 
 /**

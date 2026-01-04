@@ -2,7 +2,6 @@ import * as openpgp from "openpgp";
 import { generatePassword, formatTime } from "./utils";
 
 // UI Elements
-const form = document.getElementById("decryptForm") as HTMLFormElement;
 const chkLowercase = document.getElementById("chkLowercase") as HTMLInputElement;
 const chkUppercase = document.getElementById("chkUppercase") as HTMLInputElement;
 const chkSymbols = document.getElementById("chkSymbols") as HTMLInputElement;
@@ -33,7 +32,7 @@ let startTime = 0;
 let lastUpdateTime = 0;
 let guessesSinceLastUpdate = 0;
 let animationFrameId: number | null = null;
-let gpgMessage: any = null;
+let gpgMessage: Awaited<ReturnType<typeof openpgp.readMessage>> | null = null;
 
 // Character sets
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
