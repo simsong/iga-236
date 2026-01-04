@@ -1,5 +1,40 @@
 # Development Notes
 
+## Mac Em-Dash Conversion Fix
+
+### Problem
+When copying GPG encrypted messages from Mac Mail (or other Mac applications), the system sometimes automatically converts sequences of hyphens into em dashes. For example:
+- `-----BEGIN PGP MESSAGE-----` becomes `——BEGIN PGP MESSAGE——`
+- This breaks GPG message parsing because GPG requires ASCII hyphens (`--`), not Unicode em dashes (`—`)
+
+### Solution
+A paste event listener on the encrypted message textarea automatically detects and fixes this conversion:
+
+1. **Paste Event Handler**: Listens for paste events on the `encryptedMessage` textarea
+2. **Post-Paste Processing**: Uses `setTimeout` to process the text after the paste operation completes
+3. **Em-Dash Detection**: Checks if the text contains any em dashes (`—`)
+4. **Automatic Replacement**: Replaces all em dashes with double hyphens (`--`)
+5. **Event Triggering**: Dispatches an `input` event to trigger S2K parameter extraction if needed
+
+### Implementation
+```javascript
+encryptedInput.addEventListener("paste", (e) => {
+  setTimeout(() => {
+    const text = encryptedInput.value;
+    if (text.includes("—")) {
+      encryptedInput.value = text.replace(/—/g, "--");
+      encryptedInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }, 0);
+});
+```
+
+### Why This Approach
+- **Non-intrusive**: Only fixes the text if em dashes are detected
+- **Automatic**: No user action required - happens transparently after paste
+- **Preserves Workflow**: Triggers input event so S2K extraction still works
+- **Simple**: Single regex replacement handles all occurrences
+
 ## S2K Parameter Extraction and Display
 
 ### Overview
