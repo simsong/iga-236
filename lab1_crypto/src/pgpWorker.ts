@@ -65,12 +65,16 @@ self.onmessage = async (ev: MessageEvent<InMsg>) => {
     }
 
     post({ type: "done", found });
-  } catch (e: any) {
-    post({ type: "error", message: String(e?.message || e) });
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    post({ type: "error", message: errorMessage });
   }
 };
 
-function post(m: OutMsg) { (self as any).postMessage(m); }
+function post(m: OutMsg) { 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).postMessage(m); 
+}
 function microYield() { return new Promise<void>(r => setTimeout(r, 0)); }
 
 /** Expect:
