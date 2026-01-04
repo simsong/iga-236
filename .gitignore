@@ -1,0 +1,4 @@
+.aws-sam
+iga_236/vendor/
+**/build
+**/__pycache__

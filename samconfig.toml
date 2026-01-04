@@ -1,0 +1,25 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "iga263-home"
+resolve_s3 = true
+s3_prefix = "iga263-home"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentName=\"prod\" HostedZoneId=\"Z067345623G6IQ9M53QSI\" CertificateArn=\"\" LogLevel=\"DEBUG\" DeploymentTimestamp=\"2026-01-03\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-2"
+
+[prod.deploy.parameters]
+stack_name = "iga26-home"
+resolve_s3 = true
+s3_prefix = "iga26-home"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentName=\"prod\" HostedZoneId=\"Z067345623G6IQ9M53QSI\" CertificateArn=\"\" LogLevel=\"DEBUG\" DeploymentTimestamp=\"2026-01-03\""
+image_repositories = []
+
+[prod.global.parameters]
+region = "us-east-2"

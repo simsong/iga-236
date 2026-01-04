@@ -1,0 +1,203 @@
+"""
+Lambda function for password lab.
+This function will serve the password cracker and gets reports of correct decrypts.
+"""
+from os.path import dirname,join,isdir
+import sys
+from typing import Optional,Any,Dict
+import base64
+import os
+import json
+import logging
+import functools
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import jinja2
+#import boto3
+
+# GitHub Repository
+GITHUB_REPO_URL = "https://github.com/simsong/iga-236"
+
+
+
+# fix the path. Don't know why this is necessary
+MY_DIR = dirname(__file__)
+sys.path.append(MY_DIR)
+NESTED = join(MY_DIR, ".aws-sam", "build", "E11HomeFunction")
+if isdir(join(NESTED, "e11")):
+    sys.path.insert(0, NESTED)
+# path fixing done
+
+TEMPLATE_DIR = join(MY_DIR,"templates")
+STATIC_DIR = join(MY_DIR,"static")
+LOGGER = logging.getLogger(__name__)
+if not LOGGER.handlers:
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s:%(lineno)d %(message)s")
+
+sys.path.append(MY_DIR)
+
+# Content Types
+JPEG_MIME_TYPE = "image/jpeg"
+JSON_CONTENT_TYPE = "application/json"
+HTML_CONTENT_TYPE = "text/html; charset=utf-8"
+PNG_CONTENT_TYPE = "image/png"
+CSS_CONTENT_TYPE = "text/css; charset=utf-8"
+
+# HTTP Headers
+CORS_HEADER = "Access-Control-Allow-Origin"
+CORS_WILDCARD = "*"
+CONTENT_TYPE_HEADER = "Content-Type"
+
+# HTTP Status Codes
+HTTP_OK = 200
+HTTP_FOUND = 302
+HTTP_BAD_REQUEST = 400
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_INTERNAL_ERROR = 500
+
+COURSE_DOMAIN='cybersecurity-policy.org'
+LAB_TIMEZONE = ZoneInfo("America/New_York")  # Eastern timezone for lab deadlines
+
+# API Endpoints
+API_PATH = "/api/v1"
+API_ENDPOINT = f'https://{COURSE_DOMAIN}{API_PATH}'
+STAGE_ENDPOINT = f'https://stage.{COURSE_DOMAIN}{API_PATH}'
+
+# DDB = boto3.resource("dynamodb")
+# users_table = DDB.Table(os.environ["USERS_TABLE_NAME"])   # was assignments
+
+
+
+def eastern_filter(value):
+    """Format a time_t (epoch seconds) as ISO 8601 in EST5EDT."""
+    if value in (None, jinja2.Undefined):  # catch both
+        return ""
+    try:
+        dt = datetime.fromtimestamp(round(value), tz=LAB_TIMEZONE)
+    except TypeError as e:
+        LOGGER.debug("value=%s type(value)=%s e=%s", value, type(value), e)
+        return "n/a"
+    return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+
+# jinja2 environment for template substitution
+@functools.lru_cache(maxsize=1)
+def env():
+    """Return the jinja2 environment"""
+    e = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(
+            ["templates", TEMPLATE_DIR, os.path.join(NESTED, "templates")]
+        )
+    )
+    e.globals["API_PATH"] = API_PATH
+    e.filters["eastern"] = eastern_filter
+    e.globals["GITHUB_REPO_URL"] = GITHUB_REPO_URL
+    return e
+
+
+
+################################################################
+
+def resp_json( status: int, body: Dict[str, Any],
+               headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """End HTTP event processing with a JSON object"""
+    LOGGER.debug("resp_json(status=%s) body=%s", status, body)
+    return {
+        "statusCode": status,
+        "headers": {
+            CONTENT_TYPE_HEADER: JSON_CONTENT_TYPE,
+            CORS_HEADER: CORS_WILDCARD,
+            **(headers or {}),
+        },
+        "body": json.dumps(body, default=str),
+    }
+
+def resp_text(    status: int,    body: str, headers: Optional[Dict[str, str]] = None,
+                  cookies: Optional[list[str]] = None) -> Dict[str, Any]:
+    """End HTTP event processing with text/html"""
+    LOGGER.debug("resp_text(status=%s)", status)
+    return {
+        "statusCode": status,
+        "headers": {
+            CONTENT_TYPE_HEADER: HTML_CONTENT_TYPE,
+            CORS_HEADER: CORS_WILDCARD,
+            **(headers or {}),
+        },
+        "body": body,
+        "cookies": cookies or [],
+    }
+
+def resp_png( status: int, png_bytes: bytes, headers: Optional[Dict[str, str]] = None,
+              cookies: Optional[list[str]] = None ) -> Dict[str, Any]:
+    """End HTTP event processing with binary PNG"""
+    LOGGER.debug("resp_png(status=%s, len=%s)", status, len(png_bytes))
+    return {
+        "statusCode": status,
+        "headers": {
+            CONTENT_TYPE_HEADER: PNG_CONTENT_TYPE,
+            CORS_HEADER: CORS_WILDCARD,
+            **(headers or {}),
+        },
+        "body": base64.b64encode(png_bytes).decode("ascii"),
+        "isBase64Encoded": True,
+        "cookies": cookies or [],
+    }
+
+
+def redirect( location: str, extra_headers: Optional[dict] = None, cookies: Optional[list] = None ):
+    """End HTTP event processing with redirect to another website"""
+    LOGGER.debug("redirect(%s,%s,%s)", location, extra_headers, cookies)
+    headers = {"Location": location}
+    if extra_headers:
+        headers.update(extra_headers)
+    return {"statusCode": HTTP_FOUND, "headers": headers, "cookies": cookies or [], "body": ""}
+
+def error_404(page):
+    """Generate an error"""
+    template = env().get_template("404.html")
+    return resp_text(HTTP_NOT_FOUND, template.render(page=page))
+
+def static_file(fname):
+    """Serve a static file"""
+    if ("/" in fname) or (".." in fname) or ("\\" in fname):
+        # path transversal attack?
+        return error_404(fname)
+    headers = {}
+    try:
+        if fname.endswith(".png"):
+            with open(join(STATIC_DIR, fname), "rb") as f:
+                return resp_png(HTTP_OK, f.read())
+
+        with open(join(STATIC_DIR, fname), "r", encoding="utf-8") as f:
+            if fname.endswith(".css"):
+                headers[CONTENT_TYPE_HEADER] = CSS_CONTENT_TYPE
+            return resp_text(HTTP_OK, f.read(), headers=headers)
+    except FileNotFoundError:
+        return error_404(fname)
+
+def lambda_handler(event, _context):
+    """Handle the lambda"""
+    origin = event.get("headers", {}).get("origin")
+    if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
+        return resp_json(200, {"ok": True}, origin)
+
+    path = event.get("rawPath") or event.get("path", "")
+    method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
+
+    match ( method, path):
+        case ("POST", "/api/v1/decrypt/submit"):
+            return resp_json(200, {"ok": True})
+        # This must be last - catch all GETs, check for /static
+        # used for serving css and javascript
+        case ("GET", p):
+            if p.startswith("/static"):
+                return static_file(p.removeprefix("/static/"))
+            return error_404(p)
+
+        case (_m,_p):
+            return static_file("index.html")
+
+    return resp_json(404, {"ok": False, "error": "not found"}, origin)

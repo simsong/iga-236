@@ -1,0 +1,52 @@
+[project]
+name = "iga-236"
+version = "0.1.0"
+description = "IGA 236 home page"
+authors = [
+    {name = "Simson Garfinkel",email = "simsong@acm.org"}
+]
+license = {text = "GPL"}
+readme = "README.md"
+requires-python = "^3.13"
+
+[tool.poetry.dependencies]
+python = ">=3.13,<3.14"
+boto3 = "^1.40.71"
+jinja2 = "^3.1.6"
+pydantic = "^2.12.4"
+boto3-stubs = { version = "*", extras = ["essential", "route53", "secretsmanager", "dynamodb", "s3"] }
+pylint = "^4.0.4"
+pytest = "^9.0.2"
+pytest-cov = "^7.0.0"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+
+[dependency-groups]
+dev = [
+    "pylint (>=4.0.4,<5.0.0)",
+    "pyright (>=1.1.407,<2.0.0)",
+    "pytest (>=9.0.2,<10.0.0)"
+]
+
+[tool.pylint.MASTER]
+# Ignore the vendor directory
+ignore = ["vendor"]
+
+[tool.pyright]
+exclude    = ["**/vendor"]
+extraPaths = ["iga_236/vendor"]
+
+[tool.pytest.ini_options]
+norecursedirs = ["vendor", "iga_236/vendor"]
+testpaths     = ["tests"]
+
+[tool.black]
+extend-exclude = 'iga_236/vendor'
+
+[tool.coverage.run]
+omit = [ "**/vendor/*" ]
