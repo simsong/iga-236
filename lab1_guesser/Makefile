@@ -54,8 +54,8 @@ lint: lint-js lint-html lint-py
 	@echo "✓ All linting passed"
 
 lint-js:
-	@echo "Running ESLint on .js, .ts, and .html files..."
-	@npx eslint --ext .js,.ts,.html src/
+	@echo "Running ESLint on .js and .ts files..."
+	@npx eslint src/
 
 lint-html:
 	@echo "Running djlint on .html files..."

@@ -33,6 +33,8 @@ vendor-deps: $(REQUIREMENTS)
 
 build: clean vendor-deps template.yaml samconfig.toml
 	printenv | grep AWS
+	(cd lab1_crypto &&  make lint && make build)
+	(cd lab1_guesser &&  make lint && make build)
 	make lint
 	make check
 	sam validate --lint
