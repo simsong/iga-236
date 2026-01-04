@@ -15,6 +15,7 @@ const estTimeInput = document.getElementById("estTime") as HTMLInputElement;
 const btnStart = document.getElementById("btnStart") as HTMLButtonElement;
 const btnStop = document.getElementById("btnStop") as HTMLButtonElement;
 const btnReset = document.getElementById("btnReset") as HTMLButtonElement;
+const btnDecrypt = document.getElementById("btnDecrypt") as HTMLButtonElement;
 const currentPasswordInput = document.getElementById("currentPassword") as HTMLInputElement;
 const encryptedInput = document.getElementById("encryptedMessage") as HTMLTextAreaElement;
 const decryptedOutput = document.getElementById("decryptedMessage") as HTMLTextAreaElement;
@@ -32,7 +33,7 @@ let startTime = 0;
 let lastUpdateTime = 0;
 let guessesSinceLastUpdate = 0;
 let animationFrameId: number | null = null;
-let gpgMessage: Awaited<ReturnType<typeof openpgp.readMessage>> | null = null;
+let abortDecrypt = false; // Flag to ignore in-flight decrypts when stopped
 
 // Character sets
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
@@ -40,6 +41,27 @@ const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const SYMBOLS = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 const DIGITS = "0123456789";
 
+
+/**
+ * Adjust font size of possibleChars input to fit all characters
+ */
+function adjustPossibleCharsFontSize() {
+  const input = possibleCharsInput;
+  const container = input.parentElement;
+  if (!container) return;
+  
+  // Reset to default size to measure
+  input.style.fontSize = "1rem";
+  
+  // Check if content overflows
+  if (input.scrollWidth > input.clientWidth && input.value.length > 0) {
+    // Calculate scale factor
+    const scale = input.clientWidth / input.scrollWidth;
+    // Set font size (minimum 0.5rem for readability)
+    const newSize = Math.max(0.5, scale) * 1;
+    input.style.fontSize = `${newSize}rem`;
+  }
+}
 
 /**
  * Update the alphabet and total possible passwords based on checkboxes
@@ -52,6 +74,9 @@ function updateAlphabet() {
   if (chkDigits.checked) alphabet += DIGITS;
   
   possibleCharsInput.value = alphabet;
+  
+  // Adjust font size to fit all characters
+  setTimeout(adjustPossibleCharsFontSize, 0);
   
   passwordLen = parseInt(passwordLenSelect.value);
   totalPossible = Math.pow(alphabet.length, passwordLen);
@@ -88,78 +113,148 @@ function updateStats() {
 
 /**
  * Attempt to decrypt with a password
+ * @param password - The password to try
+ * @param ignoreAbort - If true, ignore abortDecrypt flag (for manual decrypt)
+ * @returns true if decryption succeeded, false otherwise
  */
-async function tryDecrypt(password: string): Promise<boolean> {
-  if (!gpgMessage) {
-    try {
-      const encryptedText = encryptedInput.value.trim();
-      if (!encryptedText) return false;
-      gpgMessage = await openpgp.readMessage({
-        armoredMessage: encryptedText
-      });
-    } catch {
-      return false;
-    }
+async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolean> {
+  // Check if we should abort (unless this is a manual decrypt)
+  if (!ignoreAbort && abortDecrypt) {
+    return false;
+  }
+  
+  // Always read the message fresh for each decrypt attempt
+  // OpenPGP.js message objects can't be reused across multiple decrypt calls
+  let message: Awaited<ReturnType<typeof openpgp.readMessage>>;
+  try {
+    const encryptedText = encryptedInput.value.trim();
+    if (!encryptedText) return false;
+    message = await openpgp.readMessage({
+      armoredMessage: encryptedText
+    });
+  } catch {
+    return false;
+  }
+  
+  // Check again after async operation
+  if (!ignoreAbort && abortDecrypt) {
+    return false;
   }
   
   try {
     const { data: decrypted } = await openpgp.decrypt({
-      message: gpgMessage,
+      message: message,
       passwords: [password],
       format: "utf8"
     });
     
-    // Success!
+    // Success! Return true regardless of abortDecrypt - if we found it, we found it
     decryptedOutput.value = decrypted as string;
-    body.style.backgroundColor = "#d4edda"; // Light green
+    body.classList.remove("bg-error");
+    body.classList.add("bg-success");
     return true;
   } catch {
+    // Decrypt failed - check if we should abort before returning
+    if (!ignoreAbort && abortDecrypt) {
+      return false;
+    }
     return false;
   }
 }
 
 /**
+ * Manual decrypt function (called by Decrypt button)
+ */
+async function manualDecrypt() {
+  const password = currentPasswordInput.value.trim();
+  if (!password) {
+    errorMessage.textContent = "Please enter a password.";
+    return;
+  }
+  
+  const encryptedText = encryptedInput.value.trim();
+  if (!encryptedText) {
+    errorMessage.textContent = "Please enter an encrypted GPG message.";
+    return;
+  }
+  
+  errorMessage.textContent = "";
+  btnDecrypt.disabled = true;
+  btnDecrypt.textContent = "Decrypting...";
+  
+  const found = await tryDecrypt(password, true); // ignoreAbort = true for manual
+  
+  if (!found) {
+    decryptedOutput.value = "cannot decrypt";
+    body.classList.remove("bg-success");
+    body.classList.add("bg-error");
+  }
+  
+  btnDecrypt.disabled = false;
+  btnDecrypt.textContent = "Decrypt";
+}
+
+/**
  * Main guessing loop using requestAnimationFrame
+ * Updates UI for EVERY password attempt (not batched)
  */
 async function guessingLoop() {
-  if (!isRunning || isPaused) {
+  if (!isRunning || isPaused || abortDecrypt) {
     animationFrameId = null;
     return;
   }
   
-  // Try a batch of passwords per frame (for performance)
-  const batchSize = 10;
-  let tried = 0;
-  
-  while (tried < batchSize && currentGuess < totalPossible && isRunning && !isPaused) {
-    const password = generatePassword(currentGuess, alphabet, passwordLen);
-    currentPasswordInput.value = password;
-    
-    const found = await tryDecrypt(password);
-    if (found) {
-      isRunning = false;
-      btnStart.disabled = false;
-      btnStop.disabled = true;
-      return;
-    }
-    
-    currentGuess++;
-    guessesSinceLastUpdate++;
-    tried++;
-    
-    updateStats();
-  }
-  
+  // Process one password per frame to ensure UI updates for every attempt
   if (currentGuess >= totalPossible) {
     // Exhausted all possibilities
     isRunning = false;
     btnStart.disabled = false;
     btnStop.disabled = true;
-    body.style.backgroundColor = "";
-    decryptedOutput.value = "cannot decrypt";
+    currentPasswordInput.readOnly = false;
+    if (!abortDecrypt) {
+      decryptedOutput.value = "cannot decrypt";
+      body.classList.remove("bg-success");
+      body.classList.add("bg-error");
+    } else {
+      body.classList.remove("bg-success", "bg-error");
+    }
     return;
   }
   
+  const password = generatePassword(currentGuess, alphabet, passwordLen);
+  
+  // Update UI immediately for this password
+  currentPasswordInput.value = password;
+  
+  // Make password input readonly during automation
+  currentPasswordInput.readOnly = true;
+  
+  // Try to decrypt (this will check abortDecrypt internally)
+  const found = await tryDecrypt(password, false);
+  
+  // If we found the password, stop immediately (regardless of abortDecrypt)
+  if (found) {
+    // Success!
+    isRunning = false;
+    abortDecrypt = false; // Clear abort flag since we succeeded
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+    currentPasswordInput.readOnly = false;
+    animationFrameId = null;
+    return;
+  }
+  
+  // Check if we were aborted during decrypt (only if we didn't find it)
+  if (abortDecrypt) {
+    animationFrameId = null;
+    return;
+  }
+  
+  currentGuess++;
+  guessesSinceLastUpdate++;
+  updateStats();
+  
+  // Continue to next password
   animationFrameId = requestAnimationFrame(guessingLoop);
 }
 
@@ -190,8 +285,7 @@ async function startGuessing() {
   // Clear error message if validation passes
   errorMessage.textContent = "";
   
-  // Reset GPG message to force re-read
-  gpgMessage = null;
+  abortDecrypt = false; // Reset abort flag
   
   if (!isRunning) {
     // Starting fresh
@@ -200,13 +294,15 @@ async function startGuessing() {
     lastUpdateTime = startTime;
     guessesSinceLastUpdate = 0;
     decryptedOutput.value = "";
-    body.style.backgroundColor = "#f8d7da"; // Light red
+    body.classList.remove("bg-success", "bg-error");
+    body.classList.add("bg-error");
   }
   
   isRunning = true;
   isPaused = false;
   btnStart.disabled = true;
   btnStop.disabled = false;
+  currentPasswordInput.readOnly = true; // Make readonly during automation
   
   // Start the loop
   if (!animationFrameId) {
@@ -215,17 +311,24 @@ async function startGuessing() {
 }
 
 /**
- * Stop/pause guessing
+ * Stop/pause guessing - IMMEDIATE response
  */
 function stopGuessing() {
+  // Set flags IMMEDIATELY to stop the loop
+  abortDecrypt = true;
   isPaused = true;
   isRunning = false;
-  btnStart.disabled = false;
-  btnStop.disabled = true;
+  
+  // Cancel animation frame immediately
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
+  
+  // Update UI immediately
+  btnStart.disabled = false;
+  btnStop.disabled = true;
+  currentPasswordInput.readOnly = false; // Allow manual entry again
 }
 
 /**
@@ -237,19 +340,36 @@ function resetGuessing() {
   startTime = 0;
   lastUpdateTime = 0;
   guessesSinceLastUpdate = 0;
-  gpgMessage = null;
+  abortDecrypt = false;
   currentPasswordInput.value = "";
+  currentPasswordInput.readOnly = false;
   decryptedOutput.value = "";
   guessesPerSecInput.value = "0";
   elapsedTimeInput.value = "00:00:00";
   estTimeInput.value = "00:00:00";
-  body.style.backgroundColor = "";
+  body.classList.remove("bg-success", "bg-error");
 }
 
 // Event listeners
 btnStart.addEventListener("click", startGuessing);
 btnStop.addEventListener("click", stopGuessing);
 btnReset.addEventListener("click", resetGuessing);
+btnDecrypt.addEventListener("click", manualDecrypt);
+
+// Clear decrypted message and background when user starts typing
+currentPasswordInput.addEventListener("input", () => {
+  if (!currentPasswordInput.readOnly) {
+    decryptedOutput.value = "";
+    body.classList.remove("bg-success", "bg-error");
+  }
+});
+
+// Allow Enter key to trigger manual decrypt
+currentPasswordInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter" && !currentPasswordInput.readOnly) {
+    manualDecrypt();
+  }
+});
 
 // Update alphabet when checkboxes or length change
 chkLowercase.addEventListener("change", updateAlphabet);
@@ -260,3 +380,6 @@ passwordLenSelect.addEventListener("change", updateAlphabet);
 
 // Initialize
 updateAlphabet();
+
+// Adjust font size on window resize
+window.addEventListener("resize", adjustPossibleCharsFontSize);

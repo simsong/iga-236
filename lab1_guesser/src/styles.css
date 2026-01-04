@@ -7,10 +7,70 @@ body {
   transition: background-color 0.3s ease;
 }
 
+/* Background color states */
+body.bg-success {
+  background-color: #d4edda; /* Light green */
+}
+
+body.bg-error {
+  background-color: #f8d7da; /* Light red */
+}
+
 /* Checkbox styling */
 .pure-checkbox {
   margin: 0.5rem 0;
   display: block;
+}
+
+/* Inline checkbox row */
+.checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.inline-checkbox {
+  display: inline-block;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Two-column stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Auto-shrink font for possible characters field */
+#possibleChars {
+  font-size: 1rem;
+  transition: font-size 0.1s ease;
+}
+
+#possibleChars-container {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Button row - always single row */
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.button-row button {
+  flex: 1;
 }
 
 /* Read-only input styling */

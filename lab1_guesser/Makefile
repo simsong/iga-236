@@ -4,14 +4,20 @@ BUILD_DIR := build/crypto_app
 VITE := npx vite
 VITECFG := vite.config.ts
 
-.PHONY: install dev build preview clean check test test-watch test-coverage lint lint-js lint-html lint-py
+.PHONY: install dev serve build preview clean check test test-watch test-coverage lint lint-js lint-html lint-py
 
 install:
 	@npm install
 	@npm install openpgp
 
 dev:
-	@$(VITE) --config $(VITECFG)
+	@if [ ! -d "node_modules/vite" ]; then \
+		echo "Dependencies not installed. Running 'make install' first..."; \
+		$(MAKE) install; \
+	fi
+	@npm run dev
+
+serve: dev
 
 build: clean
 	@$(VITE) build --config $(VITECFG)
