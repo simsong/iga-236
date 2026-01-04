@@ -743,6 +743,20 @@ btnStop.addEventListener("click", stopGuessing);
 btnReset.addEventListener("click", resetGuessing);
 btnDecrypt.addEventListener("click", manualDecrypt);
 
+// Fix Mac em-dash conversion: replace "—" (em dash) with "--" (double hyphen)
+encryptedInput.addEventListener("paste", (e) => {
+  // Use setTimeout to process after paste completes
+  setTimeout(() => {
+    const text = encryptedInput.value;
+    if (text.includes("—")) {
+      // Replace em dash (—) with double hyphen (--)
+      encryptedInput.value = text.replace(/—/g, "--");
+      // Trigger input event to update S2K extraction
+      encryptedInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }, 0);
+});
+
 // Extract and display S2K parameters when encrypted message changes
 encryptedInput.addEventListener("input", () => {
   const text = encryptedInput.value.trim();
