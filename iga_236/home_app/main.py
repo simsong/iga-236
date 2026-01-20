@@ -209,6 +209,7 @@ def lambda_handler(event, _context):
             return error_404(p)
 
         case (_m,_p):
-            return static_file("index.html")
+            template = env().get_template("404.html")
+            return resp_text(HTTP_FOUND, template.render())
 
     return resp_json(404, {"ok": False, "error": "not found"}, origin)
