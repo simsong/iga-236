@@ -2,11 +2,11 @@
     "TableName": "iga236-guids",
     "BillingMode": "PAY_PER_REQUEST",
     "AttributeDefinitions": [
-        { "AttributeName": "guid_id", "AttributeType": "S" },
+        { "AttributeName": "guid", "AttributeType": "S" },
         { "AttributeName": "sk", "AttributeType": "S" }
     ],
     "KeySchema": [
-        { "AttributeName": "guid_id", "KeyType": "HASH" },
+        { "AttributeName": "guid", "KeyType": "HASH" },
         { "AttributeName": "sk", "KeyType": "RANGE" }
     ]
 }

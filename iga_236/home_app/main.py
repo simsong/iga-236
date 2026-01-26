@@ -1,228 +1,191 @@
 """
-Lambda function for password lab.
-This function will serve the password cracker and gets reports of correct decrypts.
+improved main.py using powertools.
 """
-import base64
-import binascii
-import functools
-import json
-import logging
-import mimetypes
+
+# pylint: disable=missing-function-docstring
+
 import os
-import sys
+import mimetypes
+from typing import cast, Any
 from datetime import datetime
-from os.path import dirname,join,isdir
-from pathlib import Path
-from typing import Optional,Any,Dict
-from zoneinfo import ZoneInfo
 
-import jinja2
+# https://docs.aws.amazon.com/powertools/python/latest/tutorial/
+# https://docs.aws.amazon.com/powertools/python/latest/core/event_handler/api_gateway/#using-regex-patterns
+
 import boto3
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, Response, content_types
+from aws_lambda_powertools.utilities.data_classes import APIGatewayProxyEventV2
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
-# GitHub Repository
-GITHUB_REPO_URL = "https://github.com/simsong/iga-236"
+logger = Logger(service="APP") # Automatically picks up LOG_LEVEL from env
+app = APIGatewayHttpResolver(enable_validation=False)
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
-MY_DIR = dirname(__file__)
-TEMPLATE_DIR = join(MY_DIR,"templates")
-STATIC_DIR = Path(__file__).parent / "static"
-LOGGER = logging.getLogger(__name__)
-if not LOGGER.handlers:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(name)s:%(lineno)d %(message)s")
-
-sys.path.append(MY_DIR)
-
-# Content Types
-JPEG_MIME_TYPE = "image/jpeg"
-JSON_CONTENT_TYPE = "application/json"
-HTML_CONTENT_TYPE = "text/html; charset=utf-8"
-PNG_CONTENT_TYPE = "image/png"
-CSS_CONTENT_TYPE = "text/css; charset=utf-8"
-
-# HTTP Headers
-CORS_HEADER = "Access-Control-Allow-Origin"
-CORS_WILDCARD = "*"
-CONTENT_TYPE_HEADER = "Content-Type"
-
-# HTTP Status Codes
-HTTP_OK = 200
-HTTP_FOUND = 302
-HTTP_BAD_REQUEST = 400
-HTTP_FORBIDDEN = 403
-HTTP_NOT_FOUND = 404
-HTTP_INTERNAL_ERROR = 500
-
-COURSE_DOMAIN='cybersecurity-policy.org'
-LAB_TIMEZONE = ZoneInfo("America/New_York")  # Eastern timezone for lab deadlines
-
-# API Endpoints
-API_PATH = "/api/v1"
-API_ENDPOINT = f'https://{COURSE_DOMAIN}{API_PATH}'
-STAGE_ENDPOINT = f'https://stage.{COURSE_DOMAIN}{API_PATH}'
-
+### ADD ###
 DDB = boto3.resource("dynamodb")
 guids_table = DDB.Table(os.environ["GUIDS_TABLE_NAME"])   # was assignments
+### ADD END ###
 
+def get_dir_content(which, proxy: str):
+    """Safely finds and reads static files from the /static folder."""
+    logger.debug("get_dir_context(%s, %s)", which, proxy)
+    base_dir = os.path.dirname(__file__)
+    # Securely join and resolve the path to prevent directory traversal
+    path = os.path.abspath(os.path.join(base_dir, which, proxy))
+    static_root = os.path.abspath(os.path.join(base_dir, which))
 
+    if not path.startswith(static_root):
+        return None, 403 # Forbidden (Traversal attempt)
 
-def eastern_filter(value):
-    """Format a time_t (epoch seconds) as ISO 8601 in EST5EDT."""
-    if value in (None, jinja2.Undefined):  # catch both
-        return ""
+    if not os.path.exists(path) or not os.path.isfile(path):
+        return None, 404 # Not Found
+
+    mtype, _ = mimetypes.guess_type(path)
+    # Ensure common web types are correct
+    if path.endswith('.js'):
+        mtype = 'application/javascript'
+    elif path.endswith('.css'):
+        mtype = 'text/css'
+    if mtype is None:
+        mtype = 'application/octet-stream'
+
+    # Read as binary to let Powertools handle auto-Base64 encoding if needed
+    with open(path, "rb") as f:
+        return f.read(), mtype
+
+def render_dynamic_template(template_name: str) -> Response:
+    """Helper to find a template, inject query params, and return a Response."""
+    logger.debug("render_dynamic_template(%s)", template_name)
+
+    # Extract query parameters to pass to the template automatically
+    # Example: ?name=Bob becomes {{ name }} in the template
+    query_params = app.current_event.query_string_parameters or {}
+
     try:
-        dt = datetime.fromtimestamp(round(value), tz=LAB_TIMEZONE)
-    except TypeError as e:
-        LOGGER.debug("value=%s type(value)=%s e=%s", value, type(value), e)
-        return "n/a"
-    return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+        template = jinja_env.get_template(template_name)
+        html = template.render(**query_params, path_name=template_name)
+        return Response(
+            status_code=200,
+            content_type=content_types.TEXT_HTML,
+            body=html
+        )
+    except TemplateNotFound:
+        logger.warning("Template not found: %s",template_name)
+        return Response(
+            status_code=404,
+            body="404 - Page Not Found",
+            content_type=content_types.TEXT_PLAIN
+        )
 
+@app.not_found
+def handle_not_found_route(rt) -> Response:
+    """Log the event details, return a custom message, or raise a different error"""
+    return Response(status_code=404,
+                    body=f"Not found: '{type(rt)} {str(rt)}'",
+                    content_type=content_types.TEXT_PLAIN)
 
-# jinja2 environment for template substitution
-@functools.lru_cache(maxsize=1)
-def env():
-    """Return the jinja2 environment"""
-    e = jinja2.Environment(
-        loader=jinja2.FileSystemLoader( ["templates", TEMPLATE_DIR] )
+@app.get("/")
+def get_index():
+    """Explicitly handle the root path."""
+    return render_dynamic_template("index.html")
+
+@app.get("/hello")
+def hello() -> dict:
+    return {"message": "Hello world!"}
+
+@app.get("/hello/<name>")
+def hello_name(name):
+    logger.info(f"Request from {name} received")
+    return {"message": f"hello {name}!"}
+
+@app.get("/static/.+")
+def serve_static():
+    """Serves CSS, JS, and Images from the static/ directory."""
+    file_path = app.current_event.path.replace("/static/", "")
+
+    logger.debug("serve_static(%s)",file_path)
+    content, status_or_type = get_dir_content("static",file_path)
+
+    if status_or_type == 403:
+        return Response(status_code=403, body="Forbidden", content_type="text/plain")
+    if status_or_type == 404:
+        return Response(status_code=404, body="File Not Found", content_type="text/plain")
+
+    return Response(
+        status_code=200,
+        content_type=status_or_type,
+        body=content # Powertools auto-encodes binary 'bytes' to Base64
     )
-    e.globals["API_PATH"] = API_PATH
-    e.filters["eastern"] = eastern_filter
-    e.globals["GITHUB_REPO_URL"] = GITHUB_REPO_URL
-    return e
 
-################################################################
+@app.get("/assets/.+")
+def serve_assets():
+    """Serves CSS, JS, and Images from the assets/ directory."""
+    file_path = app.current_event.path.replace("/assets/", "")
+    logger.debug("serve_assets(%s)",file_path)
+    content, status_or_type = get_dir_content("assets",file_path)
 
-def resp_json( status: int, body: Dict[str, Any],
-               headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """End HTTP event processing with a JSON object"""
-    LOGGER.debug("resp_json(status=%s) body=%s", status, body)
-    return {
-        "statusCode": status,
-        "headers": {
-            CONTENT_TYPE_HEADER: JSON_CONTENT_TYPE,
-            CORS_HEADER: CORS_WILDCARD,
-            **(headers or {}),
-        },
-        "body": json.dumps(body, default=str),
-    }
+    if status_or_type == 403:
+        return Response(status_code=403, body="Forbidden", content_type="text/plain")
+    if status_or_type == 404:
+        return Response(status_code=404, body="File Not Found", content_type="text/plain")
 
-def resp_text(    status: int,    body: str, headers: Optional[Dict[str, str]] = None,
-                  cookies: Optional[list[str]] = None) -> Dict[str, Any]:
-    """End HTTP event processing with text/html"""
-    LOGGER.debug("resp_text(status=%s)", status)
-    return {
-        "statusCode": status,
-        "headers": {
-            CONTENT_TYPE_HEADER: HTML_CONTENT_TYPE,
-            CORS_HEADER: CORS_WILDCARD,
-            **(headers or {}),
-        },
-        "body": body,
-        "cookies": cookies or [],
-    }
-
-def resp_png( status: int, png_bytes: bytes, headers: Optional[Dict[str, str]] = None,
-              cookies: Optional[list[str]] = None ) -> Dict[str, Any]:
-    """End HTTP event processing with binary PNG"""
-    LOGGER.debug("resp_png(status=%s, len=%s)", status, len(png_bytes))
-    return {
-        "statusCode": status,
-        "headers": {
-            CONTENT_TYPE_HEADER: PNG_CONTENT_TYPE,
-            CORS_HEADER: CORS_WILDCARD,
-            **(headers or {}),
-        },
-        "body": base64.b64encode(png_bytes).decode("ascii"),
-        "isBase64Encoded": True,
-        "cookies": cookies or [],
-    }
+    return Response(
+        status_code=200,
+        content_type=status_or_type,
+        body=content # Powertools auto-encodes binary 'bytes' to Base64
+    )
 
 
-def redirect( location: str, extra_headers: Optional[dict] = None, cookies: Optional[list] = None ) -> Dict[str, Any]:
-    """End HTTP event processing with redirect to another website"""
-    LOGGER.debug("redirect(%s,%s,%s)", location, extra_headers, cookies)
-    headers = {"Location": location}
-    if extra_headers:
-        headers.update(extra_headers)
-    return {"statusCode": HTTP_FOUND, "headers": headers, "cookies": cookies or [], "body": ""}
+@app.get("/api/v1/ping")
+def app_point():
+    now = datetime.now().isoformat()
+    return {"type":"pong","t":now}
 
-def error_404(page) -> Dict[str, Any]:
-    """Generate an error"""
-    template = env().get_template("404.html")
-    return resp_text(HTTP_NOT_FOUND, template.render(page=page))
+@app.get("/api/v1/decrypt/submit")
+def app_submit():
+    event = APIGatewayProxyEventV2(cast(dict[str, Any], app.current_event))
+    query_params = event.query_string_parameters or {}
+    guid = query_params.get("guid")
+    if not guid:
+        return Response(status_code=403,
+                        content_type=content_types.APPLICATION_JSON,
+                        body={"ok": False, "error": "Missing guid"})
 
-
-def static_file(file_path_str) -> Dict[str, Any]:
-    """Serve a static file"""
-    requested_path = (STATIC_DIR / file_path_str).resolve()
-    if not requested_path.is_relative_to(STATIC_DIR) or not requested_path.is_file():
-        return error_404(file_path_str)
-
-    mime_type, _ = mimetypes.guess_type(requested_path)
-    mime_type = mime_type or "application/octet-stream"
-
-    # Check if it's a binary file (images, fonts, etc.)
-    is_binary = not mime_type.startswith(("text/", "application/json", "application/javascript"))
-
-    with open(join(STATIC_DIR, file_path_str), "rb" if is_binary else "r") as f:
-        content = f.read()
-
-    # pylint: disable=line-too-long
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": mime_type,
-            "Cache-Control": "public, max-age=31536000, immutable" if "assets/" in file_path_str else "no-cache"
-        },
-        "isBase64Encoded": is_binary,
-        "body": base64.b64encode(content).decode("utf-8") if is_binary else content
-    }
-
-def lambda_handler(event, _context) -> Dict[str, Any]:
-    """Handle the lambda"""
-    origin = event.get("headers", {}).get("origin")
-    if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
-        return resp_json(200, {"ok": True}, origin)
-
-    path   = event.get("rawPath") or event.get("path", "")
-    method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
-    sourceIp = event.get("requestContext",{}).get("http",{}).get("sourceIp")
-    body   = event.get("body")
-    if event.get("isBase64Encoded"):
-        try:
-            body = base64.b64decode(body or "").decode("utf-8", "replace")
-        except binascii.Error:
-            body = None
+    now = datetime.now().isoformat()
     try:
-        payload = json.loads(body) if body else {}
-    except json.JSONDecodeError:
-        payload = {}
+        guids_table.put_item(Item={'guid':guid,
+                                   'sk':now,
+                                   't':now,
+                                   'sourceIp':event.request_context.http.source_ip})
+        return Response(status_code=200,
+                        content_type=content_types.APPLICATION_JSON,
+                        body={"ok": True})
 
-    match ( method, path):
-        case ("GET", "/api/v1/decrypt/submit"):
-            # Extract guid from ?guid= parameter
-            query_params = event.get("queryStringParameters") or {}
-            guid = query_params.get("guid")
-            if not guid:
-                return resp_json(HTTP_BAD_REQUEST, {"ok": False, "error": "Missing guid"})
+    except Exception as e: # pylint: disable=broad-exception-caught
+        logger.error("DynamoDB Error") # includes stack trace
+        return Response(status_code=500,
+                        content_type=content_types.APPLICATION_JSON,
+                        body={"ok": False, "error": "Database error", "e":str(e)})
 
-            now = datetime.now().isoformat()
-            try:
-                guids_table.put_item(Item={'guid':guid,
-                                           'sk':now,
-                                           't':now,
-                                           'sourceIp':sourceIp})
-                return resp_json(200, {"ok": True})
-            except Exception as e:
-                LOGGER.error(f"DynamoDB Error: {e}")
-                return resp_json(HTTP_INTERNAL_ERROR, {"ok": False, "error": "Database error"})
+@app.get("/<proxy+>")
+def catch_all_templates(proxy):
+    """
+    Greedy route that catches any other path and tries to find
+    a matching .html file in the templates folder.
+    """
+    logger.info("catch_all_templates(%s)",proxy)
+    return render_dynamic_template(proxy)
 
-        # This must be last - catch all GETs, check for /static
-        # used for serving css and javascript
-        case ("GET", p):
-            if p.startswith("/static"):
-                return static_file(p.removeprefix("/static/"))
-            return error_404(p)
+# --- 5. Main Lambda Handler ---
+def lambda_handler(event, context):
+    # Handle EventBridge/CloudWatch Heartbeats (Warm-up)
+    logger.debug("event=%s context=%s",event,context)
+    if event.get("source") == "aws.events":
+        logger.info("aws.events event=%s",event)
+        return {"warmed": True}
 
-        case (_m,_p):
-            template = env().get_template("404.html")
-            return resp_text(HTTP_FOUND, template.render())
+    # app.resolve handles the routing and converts our Response
+    # objects into the dictionaries Lambda expects.
+    return app.resolve(event, context)

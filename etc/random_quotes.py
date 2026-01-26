@@ -11,7 +11,7 @@ from pathlib import Path
 READINGS_DIR = "/Users/simsong/Library/CloudStorage/OneDrive-Personal/current/HKS IGA 236/2026 Optional Readings"
 MINSIZE = 160
 CONGRATS = "Congratulations! You decrypted the simple message.\n"
-URL = "https://iga236.simson.net/ping.php?guid={guid}"
+URL = "https://cybersecurity-policy.org/api/v1/decrypt/submit?guid={guid}"
 OUTFILE = Path(__file__).parent / "outfile.csv"
 
 sources = []

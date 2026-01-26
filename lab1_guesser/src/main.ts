@@ -529,6 +529,7 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
   }
 
   try {
+    // 'decrypted' is defined here
     const { data: decrypted } = await openpgp.decrypt({
       message: message,
       passwords: [password],
@@ -539,6 +540,34 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
     decryptedOutput.value = decrypted as string;
     body.classList.remove("bg-error");
     body.classList.add("bg-success");
+
+    // --- NEW MODIFICATION MOVED INSIDE TRY BLOCK ---
+    // Now we can safely access 'decrypted' because we are in the same scope
+    const text = (decrypted as string).trim();
+    const urlRegex = /(https?:\/\/[^\s]+)$/;
+    const match = text.match(urlRegex);
+
+    if (match) {
+      const url = match[1];
+      statusDisplay.textContent = `Fetching URL: ${url}...`;
+
+      fetch(url, { method: 'GET' })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then((result) => {
+          // 3. Store result in the status-display div
+          statusDisplay.textContent = result;
+        })
+        .catch((err) => {
+          statusDisplay.textContent = `Error fetching URL: ${err.message}`;
+          console.error("Fetch error:", err);
+        });
+    }
+
+    return true; // Explicitly return true on success
+
   } catch {
     // Decrypt failed - check if we should abort before returning
     if (!ignoreAbort && abortDecrypt) {
@@ -546,32 +575,8 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
     }
     return false;
   }
-
-  // Decryption was successful. See if got a URL
-  // --- NEW MODIFICATION START ---
-  const text = (decrypted as string).trim();
-  const urlRegex = /(https?:\/\/[^\s]+)$/;
-  const match = text.match(urlRegex);
-
-  if (match) {
-    const url = match[1];
-    statusDisplay.textContent = `Fetching URL: ${url}...`;
-
-    fetch(url, { method: 'GET' })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.text();
-      })
-      .then((result) => {
-        // 3. Store result in the status-display div
-        statusDisplay.textContent = result;
-      })
-      .catch((err) => {
-        statusDisplay.textContent = `Error fetching URL: ${err.message}`;
-        console.error("Fetch error:", err);
-      });
-  }
 }
+
 
 /**
  * Manual decrypt function (called by Decrypt button)
