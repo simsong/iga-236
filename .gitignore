@@ -4,3 +4,5 @@ iga_236/vendor/
 **/__pycache__
 iga_236/home_app/static/lab1_guesser/assets/
 etc/outfile.csv
+**/.vite
+iga_236/home_app/static/lab1*
