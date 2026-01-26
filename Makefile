@@ -80,3 +80,17 @@ wipe-the-stack:
 distclean:
 	/bin/rm -rf .venv
 	/bin/rm -f instance/message_board.db
+
+################################################################
+## this is in Makefile.dev
+
+create-tables:
+	for fn in etc/dynamodb_*.json ; do aws dynamodb create-table --cli-input-json file://$$fn ; done
+	aws dynamodb list-tables --output text
+
+delete-tables:
+	for fn in etc/dynamodb_*.json ; do aws dynamodb delete-table --table-name $$(echo $$fn | sed s:etc/dynamodb_:: | sed s:.json::) ; done
+	aws dynamodb list-tables --output text
+
+list-tables:
+	aws dynamodb list-tables

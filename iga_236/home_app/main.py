@@ -2,35 +2,27 @@
 Lambda function for password lab.
 This function will serve the password cracker and gets reports of correct decrypts.
 """
-from os.path import dirname,join,isdir
-import sys
-from typing import Optional,Any,Dict
 import base64
-import os
+import binascii
+import functools
 import json
 import logging
-import functools
 import mimetypes
-from pathlib import Path
+import os
+import sys
 from datetime import datetime
+from os.path import dirname,join,isdir
+from pathlib import Path
+from typing import Optional,Any,Dict
 from zoneinfo import ZoneInfo
 
 import jinja2
-#import boto3
+import boto3
 
 # GitHub Repository
 GITHUB_REPO_URL = "https://github.com/simsong/iga-236"
 
-
-
-# fix the path. Don't know why this is necessary
 MY_DIR = dirname(__file__)
-sys.path.append(MY_DIR)
-NESTED = join(MY_DIR, ".aws-sam", "build", "E11HomeFunction")
-if isdir(join(NESTED, "e11")):
-    sys.path.insert(0, NESTED)
-# path fixing done
-
 TEMPLATE_DIR = join(MY_DIR,"templates")
 STATIC_DIR = Path(__file__).parent / "static"
 LOGGER = logging.getLogger(__name__)
@@ -68,8 +60,8 @@ API_PATH = "/api/v1"
 API_ENDPOINT = f'https://{COURSE_DOMAIN}{API_PATH}'
 STAGE_ENDPOINT = f'https://stage.{COURSE_DOMAIN}{API_PATH}'
 
-# DDB = boto3.resource("dynamodb")
-# users_table = DDB.Table(os.environ["USERS_TABLE_NAME"])   # was assignments
+DDB = boto3.resource("dynamodb")
+guids_table = DDB.Table(os.environ["GUIDS_TABLE_NAME"])   # was assignments
 
 
 
@@ -90,16 +82,12 @@ def eastern_filter(value):
 def env():
     """Return the jinja2 environment"""
     e = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(
-            ["templates", TEMPLATE_DIR, os.path.join(NESTED, "templates")]
-        )
+        loader=jinja2.FileSystemLoader( ["templates", TEMPLATE_DIR] )
     )
     e.globals["API_PATH"] = API_PATH
     e.filters["eastern"] = eastern_filter
     e.globals["GITHUB_REPO_URL"] = GITHUB_REPO_URL
     return e
-
-
 
 ################################################################
 
@@ -149,7 +137,7 @@ def resp_png( status: int, png_bytes: bytes, headers: Optional[Dict[str, str]] =
     }
 
 
-def redirect( location: str, extra_headers: Optional[dict] = None, cookies: Optional[list] = None ):
+def redirect( location: str, extra_headers: Optional[dict] = None, cookies: Optional[list] = None ) -> Dict[str, Any]:
     """End HTTP event processing with redirect to another website"""
     LOGGER.debug("redirect(%s,%s,%s)", location, extra_headers, cookies)
     headers = {"Location": location}
@@ -157,13 +145,13 @@ def redirect( location: str, extra_headers: Optional[dict] = None, cookies: Opti
         headers.update(extra_headers)
     return {"statusCode": HTTP_FOUND, "headers": headers, "cookies": cookies or [], "body": ""}
 
-def error_404(page):
+def error_404(page) -> Dict[str, Any]:
     """Generate an error"""
     template = env().get_template("404.html")
     return resp_text(HTTP_NOT_FOUND, template.render(page=page))
 
 
-def static_file(file_path_str):
+def static_file(file_path_str) -> Dict[str, Any]:
     """Serve a static file"""
     requested_path = (STATIC_DIR / file_path_str).resolve()
     if not requested_path.is_relative_to(STATIC_DIR) or not requested_path.is_file():
@@ -189,18 +177,45 @@ def static_file(file_path_str):
         "body": base64.b64encode(content).decode("utf-8") if is_binary else content
     }
 
-def lambda_handler(event, _context):
+def lambda_handler(event, _context) -> Dict[str, Any]:
     """Handle the lambda"""
     origin = event.get("headers", {}).get("origin")
     if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
         return resp_json(200, {"ok": True}, origin)
 
-    path = event.get("rawPath") or event.get("path", "")
+    path   = event.get("rawPath") or event.get("path", "")
     method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
+    sourceIp = event.get("requestContext",{}).get("http",{}).get("sourceIp")
+    body   = event.get("body")
+    if event.get("isBase64Encoded"):
+        try:
+            body = base64.b64decode(body or "").decode("utf-8", "replace")
+        except binascii.Error:
+            body = None
+    try:
+        payload = json.loads(body) if body else {}
+    except json.JSONDecodeError:
+        payload = {}
 
     match ( method, path):
-        case ("POST", "/api/v1/decrypt/submit"):
-            return resp_json(200, {"ok": True})
+        case ("GET", "/api/v1/decrypt/submit"):
+            # Extract guid from ?guid= parameter
+            query_params = event.get("queryStringParameters") or {}
+            guid = query_params.get("guid")
+            if not guid:
+                return resp_json(HTTP_BAD_REQUEST, {"ok": False, "error": "Missing guid"})
+
+            now = datetime.now().isoformat()
+            try:
+                guids_table.put_item(Item={'guid':guid,
+                                           'sk':now,
+                                           't':now,
+                                           'sourceIp':sourceIp})
+                return resp_json(200, {"ok": True})
+            except Exception as e:
+                LOGGER.error(f"DynamoDB Error: {e}")
+                return resp_json(HTTP_INTERNAL_ERROR, {"ok": False, "error": "Database error"})
+
         # This must be last - catch all GETs, check for /static
         # used for serving css and javascript
         case ("GET", p):
@@ -211,5 +226,3 @@ def lambda_handler(event, _context):
         case (_m,_p):
             template = env().get_template("404.html")
             return resp_text(HTTP_FOUND, template.render())
-
-    return resp_json(404, {"ok": False, "error": "not found"}, origin)

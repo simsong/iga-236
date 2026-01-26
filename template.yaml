@@ -30,6 +30,7 @@ Globals:
         LOG_LEVEL: !Ref LogLevel
         DEPLOYMENT_TIMESTAMP: !Ref DeploymentTimestamp
         USERS_TABLE_NAME: iga236-users
+        GUIDS_TABLE_NAME: iga236-guids
         PYTHONPATH: "/var/task:/var/task/vendor"
 
 Parameters:
@@ -98,6 +99,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: iga236-users
+        - DynamoDBCrudPolicy:
+            TableName: iga236-guids
 
         - Version: '2012-10-17'
           Statement:

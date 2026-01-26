@@ -17,8 +17,8 @@ try {
 // OpenPGP.js logs these through various console methods
 const shouldSuppress = (args: unknown[]): boolean => {
   const message = args.map(arg => String(arg)).join(" ");
-  return message.includes("Modification detected") || 
-         message.includes("[OpenPGP.js debug]");
+  return message.includes("Modification detected") ||
+    message.includes("[OpenPGP.js debug]");
 };
 
 const originalConsoleDebug = console.debug;
@@ -68,6 +68,7 @@ const btnDecrypt = document.getElementById("btnDecrypt") as HTMLButtonElement;
 const currentPasswordInput = document.getElementById("currentPassword") as HTMLInputElement;
 const encryptedInput = document.getElementById("encryptedMessage") as HTMLTextAreaElement;
 const decryptedOutput = document.getElementById("decryptedMessage") as HTMLTextAreaElement;
+const statusDisplay = document.getElementById("status-display") as HTMLDivElement;
 const errorMessage = document.getElementById("errorMessage") as HTMLDivElement;
 const s2kForm = document.getElementById("s2kForm") as HTMLFormElement;
 const s2kCipher = document.getElementById("s2kCipher") as HTMLInputElement;
@@ -127,10 +128,10 @@ function adjustPossibleCharsFontSize() {
   const input = possibleCharsInput;
   const container = input.parentElement;
   if (!container) return;
-  
+
   // Reset to default size to measure
   input.style.fontSize = "1rem";
-  
+
   // Check if content overflows
   if (input.scrollWidth > input.clientWidth && input.value.length > 0) {
     // Calculate scale factor
@@ -150,12 +151,12 @@ function updateAlphabet() {
   if (chkUppercase.checked) alphabet += UPPERCASE;
   if (chkSymbols.checked) alphabet += SYMBOLS;
   if (chkDigits.checked) alphabet += DIGITS;
-  
+
   possibleCharsInput.value = alphabet;
-  
+
   // Adjust font size to fit all characters
   setTimeout(adjustPossibleCharsFontSize, 0);
-  
+
   passwordLen = parseInt(passwordLenSelect.value);
   totalPossible = Math.pow(alphabet.length, passwordLen);
   totalPossibleInput.value = totalPossible.toLocaleString();
@@ -167,7 +168,7 @@ function updateAlphabet() {
 function updateStats() {
   const now = Date.now();
   const elapsedSeconds = (now - startTime) / 1000;
-  
+
   // Update guesses per second (using last second's data)
   if (now - lastUpdateTime >= 1000) {
     const gps = guessesSinceLastUpdate / ((now - lastUpdateTime) / 1000);
@@ -175,9 +176,9 @@ function updateStats() {
     guessesSinceLastUpdate = 0;
     lastUpdateTime = now;
   }
-  
+
   elapsedTimeInput.value = formatTime(elapsedSeconds);
-  
+
   // Calculate estimated time to try all passwords
   if (guessesSinceLastUpdate > 0 && currentGuess > 0) {
     const avgGps = currentGuess / elapsedSeconds;
@@ -197,12 +198,12 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
     const message = await openpgp.readMessage({
       armoredMessage: encryptedText
     });
-    
+
     // Extract S2K parameters from message packets
     // OpenPGP.js v5+ uses a packets iterator
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const msgAny = message as any;
-    
+
     // Debug: log EVERYTHING about the message structure
     console.log("=== FULL MESSAGE OBJECT ===");
     console.log(JSON.stringify(msgAny, (key, value) => {
@@ -218,15 +219,15 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
       }
       return value;
     }, 2));
-    
+
     console.log("=== MESSAGE OBJECT KEYS ===");
     console.log(Object.keys(msgAny));
-    
+
     console.log("=== MESSAGE PACKETS ===");
     console.log("msgAny.packets:", msgAny.packets);
     console.log("msgAny.packets type:", typeof msgAny.packets);
     console.log("msgAny.packets constructor:", msgAny.packets?.constructor?.name);
-    
+
     // Try to inspect packets in detail
     if (msgAny.packets) {
       console.log("=== PACKETS ITERATION ===");
@@ -257,10 +258,10 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
         console.log("Error iterating packets:", e);
       }
     }
-    
+
     // Try different ways to access packets
     let packets: unknown[] = [];
-    
+
     // Method 1: Direct array access
     if (Array.isArray(msgAny.packets)) {
       packets = msgAny.packets;
@@ -298,7 +299,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
         console.log("Packets accessed via packets.packets");
       }
     }
-    
+
     // Method 5: Try to iterate using for...of if it's iterable
     if (packets.length === 0 && msgAny.packets) {
       try {
@@ -314,21 +315,21 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
         console.log("for...of failed:", e);
       }
     }
-    
+
     console.log("Extracted packets:", packets);
     console.log("Number of packets:", packets.length);
-    
+
     // Cipher algorithm mapping (RFC 4880)
     const cipherMap: Record<number, string> = {
       7: "AES128",
-      8: "AES192", 
+      8: "AES192",
       9: "AES256",
       2: "IDEA",
       3: "TripleDES",
       4: "CAST5",
       11: "Twofish"
     };
-    
+
     // Hash algorithm mapping (RFC 4880)
     const hashMap: Record<number, string> = {
       1: "MD5",
@@ -339,7 +340,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
       10: "SHA512",
       11: "SHA224"
     };
-    
+
     // S2K algorithm mapping (RFC 4880) - not used, S2K type is a string in OpenPGP.js
     // const s2kMap: Record<number, string> = {
     //   0: "Simple S2K",
@@ -347,34 +348,34 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
     //   2: "Reserved",
     //   3: "Iterated and Salted S2K"
     // };
-    
+
     // Look for symmetric key encrypted data packet
     // Based on actual structure: first packet has sessionKeyAlgorithm and s2k
     for (let i = 0; i < packets.length; i++) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pkt = packets[i] as any;
-      
+
       console.log(`Packet ${i}:`, {
         version: pkt.version,
         sessionKeyAlgorithm: pkt.sessionKeyAlgorithm,
         s2k: pkt.s2k,
         keys: Object.keys(pkt)
       });
-      
+
       // Look for packet with s2k and sessionKeyAlgorithm (first packet in the structure)
       if (pkt.s2k && pkt.sessionKeyAlgorithm !== null && pkt.sessionKeyAlgorithm !== undefined) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const symKeyPacket = pkt as any;
-        
+
         const algorithm = symKeyPacket.sessionKeyAlgorithm; // This is the cipher algorithm
         const s2k = symKeyPacket.s2k;
-        
+
         console.log("Found sym key packet with S2K:", { algorithm, s2k });
-        
+
         if (algorithm && s2k) {
           // Map cipher algorithm
           const cipher = cipherMap[algorithm] || `Unknown (${algorithm})`;
-          
+
           // Map S2K type (it's a string like "iterated", not a number)
           let s2kType = "Unknown";
           if (s2k.type === "iterated" || s2k.type === "iterated-salted") {
@@ -386,10 +387,10 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
           } else if (s2k.type) {
             s2kType = s2k.type.charAt(0).toUpperCase() + s2k.type.slice(1) + " S2K";
           }
-          
+
           // Map hash algorithm (s2k.algorithm is the hash algorithm)
           const hash = hashMap[s2k.algorithm ?? -1] || `Unknown (${s2k.algorithm})`;
-          
+
           // Extract salt (it's already a hex string!)
           let salt = "N/A";
           if (s2k.salt) {
@@ -410,7 +411,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
                 .toUpperCase();
             }
           }
-          
+
           // Extract iteration count (s2k.c is the encoded count)
           const encodedCount = s2k.c !== null && s2k.c !== undefined ? s2k.c : "N/A";
           // Calculate actual iteration count from encoded value
@@ -421,15 +422,15 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
             const mantissa = 16 + (encodedCount & 15);
             actualCount = (mantissa << exp).toLocaleString();
           }
-          
+
           // Display S2K parameters in form fields
-          const iterationsDisplay = actualCount !== "N/A" 
-            ? `${actualCount} (encoded: ${encodedCount})`
-            : String(encodedCount);
-          
+          const iterationsDisplay = actualCount !== "N/A"
+                ? `${actualCount} (encoded: ${encodedCount})`
+                : String(encodedCount);
+
           console.log("Setting S2K display:", { cipher, s2kType, hash, salt, iterationsDisplay });
           console.log("S2K form elements:", { s2kForm, s2kCipher, s2kAlgorithm, s2kHash, s2kSalt, s2kIterations });
-          
+
           // Check only the input fields (form element is optional for setting values)
           if (!s2kCipher || !s2kAlgorithm || !s2kHash || !s2kSalt || !s2kIterations) {
             console.error("S2K input elements not found!");
@@ -442,14 +443,14 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
             });
             return;
           }
-          
+
           console.log("Setting form field values...");
           s2kCipher.value = cipher;
           s2kAlgorithm.value = s2kType;
           s2kHash.value = hash;
           s2kSalt.value = salt;
           s2kIterations.value = iterationsDisplay;
-          
+
           console.log("Values set:", {
             cipher: s2kCipher.value,
             algorithm: s2kAlgorithm.value,
@@ -457,7 +458,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
             salt: s2kSalt.value,
             iterations: s2kIterations.value
           });
-          
+
           // Show the form if it exists (try multiple ways to find it)
           if (s2kForm) {
             s2kForm.style.display = "block";
@@ -476,7 +477,7 @@ async function extractAndDisplayS2K(encryptedText: string): Promise<void> {
         }
       }
     }
-    
+
     // No S2K parameters found
     if (s2kForm) {
       s2kForm.style.display = "none";
@@ -501,16 +502,16 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
   if (!ignoreAbort && abortDecrypt) {
     return false;
   }
-  
+
   // Get encrypted text and cache it to avoid modification detection issues
   const encryptedText = encryptedInput.value.trim();
   if (!encryptedText) return false;
-  
+
   // Update cache if text changed (for manual edits)
   if (ignoreAbort || encryptedText !== cachedEncryptedText) {
     cachedEncryptedText = encryptedText;
   }
-  
+
   // Always read the message fresh for each decrypt attempt
   // OpenPGP.js message objects can't be reused across multiple decrypt calls
   let message: Awaited<ReturnType<typeof openpgp.readMessage>>;
@@ -521,30 +522,54 @@ async function tryDecrypt(password: string, ignoreAbort = false): Promise<boolea
   } catch {
     return false;
   }
-  
+
   // Check again after async operation
   if (!ignoreAbort && abortDecrypt) {
     return false;
   }
-  
+
   try {
     const { data: decrypted } = await openpgp.decrypt({
       message: message,
       passwords: [password],
       format: "utf8"
     });
-    
+
     // Success! Return true regardless of abortDecrypt - if we found it, we found it
     decryptedOutput.value = decrypted as string;
     body.classList.remove("bg-error");
     body.classList.add("bg-success");
-    return true;
   } catch {
     // Decrypt failed - check if we should abort before returning
     if (!ignoreAbort && abortDecrypt) {
       return false;
     }
     return false;
+  }
+
+  // Decryption was successful. See if got a URL
+  // --- NEW MODIFICATION START ---
+  const text = (decrypted as string).trim();
+  const urlRegex = /(https?:\/\/[^\s]+)$/;
+  const match = text.match(urlRegex);
+
+  if (match) {
+    const url = match[1];
+    statusDisplay.textContent = `Fetching URL: ${url}...`;
+
+    fetch(url, { method: 'GET' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.text();
+      })
+      .then((result) => {
+        // 3. Store result in the status-display div
+        statusDisplay.textContent = result;
+      })
+      .catch((err) => {
+        statusDisplay.textContent = `Error fetching URL: ${err.message}`;
+        console.error("Fetch error:", err);
+      });
   }
 }
 
@@ -557,25 +582,25 @@ async function manualDecrypt() {
     errorMessage.textContent = "Please enter a password.";
     return;
   }
-  
+
   const encryptedText = encryptedInput.value.trim();
   if (!encryptedText) {
     errorMessage.textContent = "Please enter an encrypted GPG message.";
     return;
   }
-  
+
   errorMessage.textContent = "";
   btnDecrypt.disabled = true;
   btnDecrypt.textContent = "Decrypting...";
-  
+
   const found = await tryDecrypt(password, true); // ignoreAbort = true for manual
-  
+
   if (!found) {
     decryptedOutput.value = "cannot decrypt";
     body.classList.remove("bg-success");
     body.classList.add("bg-error");
   }
-  
+
   btnDecrypt.disabled = false;
   btnDecrypt.textContent = "Decrypt";
 }
@@ -589,7 +614,7 @@ async function guessingLoop() {
     animationFrameId = null;
     return;
   }
-  
+
   // Process one password per frame to ensure UI updates for every attempt
   if (currentGuess >= totalPossible) {
     // Exhausted all possibilities
@@ -606,18 +631,18 @@ async function guessingLoop() {
     }
     return;
   }
-  
+
   const password = generatePassword(currentGuess, alphabet, passwordLen);
-  
+
   // Update UI immediately for this password
   currentPasswordInput.value = password;
-  
+
   // Make password input readonly during automation
   currentPasswordInput.readOnly = true;
-  
+
   // Try to decrypt (this will check abortDecrypt internally)
   const found = await tryDecrypt(password, false);
-  
+
   // If we found the password, stop immediately (regardless of abortDecrypt)
   if (found) {
     // Success!
@@ -629,17 +654,17 @@ async function guessingLoop() {
     animationFrameId = null;
     return;
   }
-  
+
   // Check if we were aborted during decrypt (only if we didn't find it)
   if (abortDecrypt) {
     animationFrameId = null;
     return;
   }
-  
+
   currentGuess++;
   guessesSinceLastUpdate++;
   updateStats();
-  
+
   // Continue to next password
   animationFrameId = requestAnimationFrame(guessingLoop);
 }
@@ -649,11 +674,11 @@ async function guessingLoop() {
  */
 async function startGuessing() {
   if (isRunning && !isPaused) return;
-  
+
   // Validate inputs and build error message
   updateAlphabet();
   const encryptedText = encryptedInput.value.trim();
-  
+
   const errors: string[] = [];
   if (alphabet.length === 0) {
     errors.push("Please select at least one character set option.");
@@ -661,20 +686,20 @@ async function startGuessing() {
   if (!encryptedText) {
     errors.push("Please enter an encrypted GPG message.");
   }
-  
+
   const errorString = errors.join(" ");
   if (errorString) {
     errorMessage.textContent = errorString;
     return;
   }
-  
+
   // Clear error message if validation passes
   errorMessage.textContent = "";
-  
+
   // Cache encrypted text at start to ensure consistency
   cachedEncryptedText = encryptedInput.value.trim();
   abortDecrypt = false; // Reset abort flag
-  
+
   if (!isRunning) {
     // Starting fresh
     currentGuess = 0;
@@ -682,16 +707,17 @@ async function startGuessing() {
     lastUpdateTime = startTime;
     guessesSinceLastUpdate = 0;
     decryptedOutput.value = "";
+    statusDisplay.textContent = "";
     body.classList.remove("bg-success", "bg-error");
     body.classList.add("bg-error");
   }
-  
+
   isRunning = true;
   isPaused = false;
   btnStart.disabled = true;
   btnStop.disabled = false;
   currentPasswordInput.readOnly = true; // Make readonly during automation
-  
+
   // Start the loop
   if (!animationFrameId) {
     animationFrameId = requestAnimationFrame(guessingLoop);
@@ -706,13 +732,13 @@ function stopGuessing() {
   abortDecrypt = true;
   isPaused = true;
   isRunning = false;
-  
+
   // Cancel animation frame immediately
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
-  
+
   // Update UI immediately
   btnStart.disabled = false;
   btnStop.disabled = true;
@@ -777,6 +803,7 @@ encryptedInput.addEventListener("input", () => {
 currentPasswordInput.addEventListener("input", () => {
   if (!currentPasswordInput.readOnly) {
     decryptedOutput.value = "";
+    statusDisplay.textContent = "";
     body.classList.remove("bg-success", "bg-error");
   }
 });
