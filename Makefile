@@ -25,7 +25,7 @@ install:
 
 build: clean template.yaml samconfig.toml
 	printenv | grep AWS
-	(cd lab1_crypto &&  make lint && make build)
+	(cd lab1_crypto  &&  make lint && make build)
 	(cd lab1_guesser &&  make lint && make build)
 	make lint
 	make check
@@ -33,6 +33,7 @@ build: clean template.yaml samconfig.toml
 	sam build --use-container --parallel
 
 deploy:
+	make build
 	sam deploy --stack-name $(STACK) \
 		--parameter-overrides \
 			DeploymentTimestamp="$$(date +'%Y-%m-%dT%H:%M:%S%z %Z')" \

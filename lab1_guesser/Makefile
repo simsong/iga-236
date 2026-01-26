@@ -1,4 +1,4 @@
-# Vite-driven SPA under src/crypto_app → build/crypto_app
+# Vite-driven SPA under src/lab1_guesser → build/lab1_guesser
 APP_DIR := src/crypto_app
 BUILD_DIR := build/crypto_app
 VITE := npx vite
