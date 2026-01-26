@@ -62,6 +62,14 @@ body.bg-error {
   overflow: hidden;
 }
 
+#status-display {
+    color: #00008B;
+    margin-top: 10px;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-weight: bold;
+}
+
 /* Button row - always single row */
 .button-row {
   display: flex;

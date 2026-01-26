@@ -9,14 +9,12 @@ DOMAIN=cybersecurity-policy.org
 STACK=iga236-home
 CODE_DIR=iga_236
 REQUIREMENTS=iga_236/requirements.txt
-VENDOR_DIR=$(CODE_DIR)/vendor
 
 
 .PHONY: build deploy clean install lint check test
 clean:
 	@echo "--- Cleaning old build artifacts ---"
 	rm -rf .aws-sam
-	rm -rf $(VENDOR_DIR)
 
 $(REQUIREMENTS): poetry.lock pyproject.toml
 	@echo "--- Exporting requirements.txt from Poetry ---"
@@ -25,15 +23,9 @@ $(REQUIREMENTS): poetry.lock pyproject.toml
 install:
 	poetry install --with dev
 
-vendor-deps: $(REQUIREMENTS)
-	@echo "--- Vendoring dependencies into $(VENDOR_DIR) ---"
-	rm -rf $(VENDOR_DIR) && mkdir $(VENDOR_DIR)
-	poetry run pip install -r $(REQUIREMENTS) -t $(VENDOR_DIR)
-	rm -rf $(VENDOR_DIR)/*.dist-info $(VENDOR_DIR)/*.egg-info
-
-build: clean vendor-deps template.yaml samconfig.toml
+build: clean template.yaml samconfig.toml
 	printenv | grep AWS
-	(cd lab1_crypto &&  make lint && make build)
+	(cd lab1_crypto  &&  make lint && make build)
 	(cd lab1_guesser &&  make lint && make build)
 	make lint
 	make check
@@ -41,6 +33,7 @@ build: clean vendor-deps template.yaml samconfig.toml
 	sam build --use-container --parallel
 
 deploy:
+	make build
 	sam deploy --stack-name $(STACK) \
 		--parameter-overrides \
 			DeploymentTimestamp="$$(date +'%Y-%m-%dT%H:%M:%S%z %Z')" \
@@ -67,6 +60,7 @@ tail:
 
 # Useful functions
 list-cloud-resources:
+	printenv | grep AWS
 	aws cloudformation list-stack-resources \
 	  --stack-name $(STACK) \
 	  --query "StackResourceSummaries[?ResourceType=='AWS::ApiGatewayV2::DomainName'].[LogicalResourceId,PhysicalResourceId,ResourceStatus]" \
@@ -80,3 +74,21 @@ wipe-the-stack:
 distclean:
 	/bin/rm -rf .venv
 	/bin/rm -f instance/message_board.db
+
+################################################################
+## this is in Makefile.dev
+
+create-tables:
+	for fn in etc/dynamodb_*.json ; do aws dynamodb create-table --cli-input-json file://$$fn ; done
+	aws dynamodb list-tables --output text
+
+delete-tables:
+	for fn in etc/dynamodb_*.json ; do aws dynamodb delete-table --table-name $$(echo $$fn | sed s:etc/dynamodb_:: | sed s:.json::) ; done
+	aws dynamodb list-tables --output text
+
+scan-tables:
+	for fn in etc/dynamodb_*.json ; do aws dynamodb scan --table-name $$(echo $$fn | sed s:etc/dynamodb_:: | sed s:.json::) ; done
+	aws dynamodb list-tables --output text
+
+list-tables:
+	aws dynamodb list-tables
