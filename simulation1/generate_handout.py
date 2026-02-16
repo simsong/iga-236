@@ -10,8 +10,7 @@ NOTES = 'notes'
 ATTENDANCE = 'attendance'
 ROLES = 'roles'
 
-def generate_handout(*, roles, output_pdf="Student_Handout.pdf", sheet):
-
+def generate_handout(*, roles, output_pdf="Student_Handout.pdf", sheet=None):
     def add_header_footer(canvas, doc):
         """Adds a title header and page numbers."""
         match sheet:
