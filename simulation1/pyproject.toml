@@ -1,0 +1,50 @@
+[project]
+name = "iga-236"
+version = "0.1.0"
+description = "IGA 236 home page"
+authors = [
+    {name = "Simson Garfinkel",email = "simsong@acm.org"}
+]
+license = {text = "GPL"}
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+
+[tool.poetry.dependencies]
+python = ">=3.13,<3.14"
+pydantic = "^2.12.4"
+pylint = "^4.0.4"
+reportlab = "^4.4.10"
+
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+
+[dependency-groups]
+dev = [
+    "pylint (>=4.0.4,<5.0.0)",
+    "pyright (>=1.1.407,<2.0.0)",
+    "pytest (>=9.0.2,<10.0.0)"
+]
+
+[tool.pylint.MASTER]
+ignore = ["vendor"]
+
+[tool.pyright]
+exclude    = ["**/vendor"]
+
+
+[tool.pytest.ini_options]
+norecursedirs = ["vendor", "iga_236/vendor"]
+testpaths     = ["tests"]
+
+[tool.black]
+extend-exclude = 'iga_236/vendor'
+
+[tool.coverage.run]
+omit = [ "**/vendor/*" ]
