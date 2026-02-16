@@ -164,7 +164,7 @@ def app_submit():
                         body={"ok": True})
 
     except Exception as e: # pylint: disable=broad-exception-caught
-        logger.error("DynamoDB Error") # includes stack trace
+        logger.exception("DynamoDB Error") # includes stack trace
         return Response(status_code=500,
                         content_type=content_types.APPLICATION_JSON,
                         body={"ok": False, "error": "Database error", "e":str(e)})
