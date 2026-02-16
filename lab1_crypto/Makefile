@@ -19,6 +19,10 @@ dev:
 
 serve: dev
 
+build: clean
+	@$(VITE) build --config $(VITECFG)
+	@echo "Built → $(BUILD_DIR)"
+
 test:
 	@if [ ! -d "node_modules/vitest" ]; then \
 		echo "Dependencies not installed. Running 'make install' first..."; \

@@ -2,3 +2,10 @@
 iga_236/vendor/
 **/build
 **/__pycache__
+iga_236/home_app/static/lab1_guesser/assets/
+etc/outfile.csv
+**/.vite
+iga_236/home_app/static/lab1*
+**ferpa**
+.envrc
+.DS_Store

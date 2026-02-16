@@ -1,0 +1,127 @@
+[
+ {
+  "Home Country": "England",
+  "Role": "Legislative Liaison",
+   "Position": "You believe that our organization must strictly comply with the intent of the Investigatory Powers Act and not find ways to work around it. Fighting child trafficking requires that law enforcement have strong tools. Being seen as ‘anti-government’ got us banned in Russia, and might have issues elsewhere."
+ },
+ {
+  "Home Country": "Canada",
+  "Role": "Policy Analyst",
+  "Position": "You are alarmed that Apple has already disabled Advanced Data Protection for UK users and believe that we should withdraw all sensitive operations from the UK immediately. How will we do that?"
+ },
+ {
+  "Home Country": "China",
+  "Role": "China Government Liaison",
+  "Position": "You were born in China and moved to Canada at age 7. You took this job so you could frequently visit your grand parents. You advocate for following the ‘letter of the law’ as we do in China. Your grandparents were recently warned by the Chinese authorities that your organization should stop focusing on China."
+ },
+ {
+  "Home Country": "United States",
+  "Role": "IT Manager",
+  "Position": "You are a mid-level IT manager. Two years ago you were secretly recruited by the Russian SVR. You find Apple’s security model incredibly frustrating because the malware your handlers give you is constantly removed by Apple's system updates."
+ },
+ {
+  "Home Country": "Poland",
+  "Role": "Data Protection Officer",
+   "Position": "You are a fan of moving to a web-based system hosted in the Netherlands, avoiding the issue of Apple's policies."
+ },
+ {
+  "Home Country": "Kenya",
+  "Role": "Volunteer Coordinator",
+  "Position": "You have never liked the ‘Apple-only’ mandate, and you believe that if the UK can force backdoors, then no platform is truly safe, so the organization should stop spending money on expensive hardware and let people use their own phones."
+ },
+ {
+  "Home Country": "Brazil",
+  "Role": "Law Enforcement Liaison",
+   "Position": "You don't trust Apple, as Apple built backdoors for China. But is Android safer? Your law enforcement contacts say it doesn't matter if criminals in Brazil use Apple or Android, since everyone reveals their passwords when appropriately questioned. "
+ },
+ {
+  "Home Country": "United States",
+  "Role": "Fundraising Director",
+  "Position": "You are frustrated that our security protocols are so strict that they prevent us from using generative AI tools for tracking traffickers."
+ },
+ {
+  "Home Country": "England",
+  "Role": "Technical Lead",
+  "Position": "You want the tech team to research exactly what is happening in England what would be involved in using our existing setup safely."
+ },
+ {
+  "Home Country": "Nigeria",
+  "Role": "Field Operations Manager",
+   "Position": "You worry that if we stay and comply with the ‘Snooper’s Charter,’ other governments in Africa where we operate will demand the same backdoor access to monitor our work."
+ },
+ {
+  "Home Country": "Poland",
+  "Role": "Human Rights Lawyer",
+  "Position": "You argue that the UK's ‘Technical Capability Notices’ are a violation of fundamental rights. You want the organization to join Apple’s legal challenge in the UK."
+ },
+ {
+  "Home Country": "Canada",
+  "Role": "Digital Security Trainer",
+  "Position": "You are a pragmatist. You argue that since news accounts say the UK government ‘abandoned’ the backdoor demand in August 2025, we should stay on Apple."
+ },
+ {
+  "Home Country": "South Africa",
+  "Role": "Executive Recruiter",
+  "Position": "You are worried that the encryption debate is a distraction and focusing on it is hurting our brand. You have heard that the FBI eventually broke into an iPhone without Apple's help. You think we should move to Windows-based systems to make it easier to recruit high-level experts."
+ },
+ {
+  "Home Country": "United States",
+  "Role": "OSINT Analyst",
+  "Position": "You are frustrated by the ‘one size fits all’ security. You find it ridiculous that you can't use specialized Chinese-language scrapers because they don't meet security standards. You want the organization to move to a more permissive environment for research."
+ },
+ {
+  "Home Country": "England",
+  "Role": "Public Relations Manager",
+  "Position": "You are concerned about the optics of ‘Standard Data Protection'. If our UK staff are forced to use less secure backups, and we have a data breach, it would be a disaster. You advocate for moving all UK document development to a self-hosted server in a neutral country."
+ },
+ {
+  "Home Country": "China",
+  "Role": "Software Architect",
+  "Position": "You believe we should adopt Chinese ‘guo mi’ standards for our global operations. These standards are now part of international ISO standards and offer a legitimate alternative to Western platforms that are being compromised by UK and US legislation."
+ },
+ {
+  "Home Country": "Poland",
+  "Role": "Strategy Consultant",
+  "Position": "You believe the organization should follow the ‘Russia model'—if a country demands a backdoor, we leave."
+ },
+ {
+  "Home Country": "Argentina",
+  "Role": "Regional Expansion Lead",
+  "Position": "You are focused on the Central America expansion. You are terrified that if we comply with the UK, we will be forced to comply with similar demands in South America."
+ },
+ {
+  "Home Country": "United States",
+  "Role": "Security Researcher",
+   "Position": "You are skeptical of the ‘Major Victory’ news stories. You think the UK government is using classified methods to get access to the Apple data, similar to what the FBI did with the San Bernardino iPhone.."
+ },
+ {
+  "Home Country": "Canada",
+  "Role": "Crisis Communicator",
+  "Position": "You advocate for ‘strategic silence.’ You point out that Apple hasn't even received official word that the UK backed down. You believe we should wait for Apple’s next move before making any expensive platform changes."
+ },
+ {
+  "Home Country": "England",
+  "Role": "Safeguarding Officer",
+  "Position": "You are conflicted. Your mission is to fight CSAM, and the UK government claims these backdoors are specifically to combat child abuse. You want to know if there is a way to allow law enforcement access *only* for trafficking cases without compromising all our other communications."
+ },
+ {
+  "Home Country": "United States",
+  "Role": "Chief Technology Officer",
+  "Position": "You want to move to a ‘Quantum-ready’ infrastructure. You are worried that while we fight over backdoors, quantum computing will make all current encryption obsolete anyway."
+ },
+ {
+  "Home Country": "Colombia",
+  "Role": "Legal Counsel",
+  "Position": "You believe that ‘secret legal processes’ in the UK make it impossible to be a law-abiding organization. You suggest we move our legal seat to a country with no extradition or data-sharing treaties with the UK or US."
+ },
+ {
+  "Home Country": "China",
+  "Role": "Supply Chain Liaison",
+  "Position": "You argue that since our Chinese affiliate is already ‘legally distinct’ to comply with local laws, we should simply do the same in the UK. How would that work?"
+ },
+ {
+  "Home Country": "United States",
+  "Role": "Compliance Officer",
+  "Position": "You are a stickler for FIPS 140-3. You believe that regardless of the hardware, we must use government-validated modules. You worry that Apple’s ‘Advanced Data Protection’ isn't actually compliant with the latest US standards."
+ }
+]
